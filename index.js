@@ -1,7 +1,11 @@
 const express = require("express");
 const users = require("./MOCK_DATA.json");
 const app =  express();
+const fs = require("fs");
 const PORT = 4000;
+
+//Middleware - Plugin
+app.use(express.urlencoded({ extended: false }));
 
 //ROUTES
 
@@ -26,6 +30,14 @@ app.get("/api/users/:id", (req, res) => { //:id = dynamic
 })
 
 //POST
+
+app.post("/api/users", (req,res) => {
+    const body = req.body;
+    users.push({...body, id: users.length+1});
+    fs.writeFile("./MOCK_DATA.json", JSON.stringify(users), (err, data) => {
+        return res.json({status: "success", id: users.length});
+    })
+})
 //PATCH
 //DELETE
 
