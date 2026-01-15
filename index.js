@@ -2,49 +2,89 @@ const express = require("express");
 const users = require("./MOCK_DATA.json");
 const app =  express();
 const fs = require("fs");
+const mongoose = require("mongoose");
+const { type } = require("os");
 const PORT = 4000;
+
+//Connection
+mongoose.connect('mongodb+srv://shubham:mongolearn@cluster0.vu345fr.mongodb.net/youtube-app-1?appName=Cluster0')
+.then(() => console.log("MongoDB Connected"))
+.catch((err) => console.log("Mongo Error", err));
+
+//Schema
+const userSchema = new mongoose.Schema({
+    firstName: {
+        type: String,
+        required: true,
+    },
+    lastName: {
+        type: String, 
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true,  //to avoid duplicacy
+
+    },
+    jobTitle: {
+        type: String,
+    },
+    gender: {
+        type: String,
+    },
+    
+}, { timestamps: true}
+);
+
+const User = mongoose.model("user", userSchema);
+
 
 //Middleware - Plugin
 app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+
 
 //ROUTES
 
 //GET
-app.get('/users', (req,res) => {
+app.get('/users', async (req,res) => {
+    const allDbUsers = await User.find({});
     const html = `
     <ul>
-    ${users.map((user) => `<li>${user.first_name}</li>`).join("")}
+    ${allDbUsers.map((user) => `<li>${user.firstName} - ${user.email}</li>`).join("")}
     </ul>
     `
     res.send(html); //send HTML or text
 })
 
-app.get('/api/users', (req,res) => {
-    return res.json(users);
+app.get('/api/users', async(req,res) => {
+    const allDbUsers = await User.find({});
+    return res.json(allDbUsers);
 })
 
 app
 .route("/api/users/:id")
-.get((req, res) => { //:id = dynamic
-    const id = Number(req.params.id);
-    const user = users.find((user) => user.id === id);
+.get(async(req, res) => { //:id = dynamic
+    const user = await User.findById(req.params.id);
     if(!user) return res.status(404).json({ error:"user not found"});
     return res.json(user);
 })
 
 //PATCH
-.patch((req, res) => {
-    return res.json({ status: "Pending" });
+.patch(async(req, res) => {
+    await User.findByIdAndUpdate(req.params.id, { lastName: "Changed" });
+    return res.json({ status: "Success" });
 })
 
 //DELETE
-.delete((req, res) => {
-    return res.json({ status: "Pending" });
+.delete(async(req, res) => {
+    await User.findByIdAndDelete(req.params.id);
+    return res.json({ status: "Success" });
 })
 
 //POST
 
-app.post("/api/users", (req,res) => {
+app.post("/api/users", async (req,res) => {
     const body = req.body;
     if(
         !body ||
@@ -56,10 +96,14 @@ app.post("/api/users", (req,res) => {
     ){
         return res.status(400).json({ msg: "All fields are required"});
     }
-    users.push({...body, id: users.length+1});
-    fs.writeFile("./MOCK_DATA.json", JSON.stringify(users), (err, data) => {
-        return res.status(201).json({status: "success", id: users.length});
-    })
+    const result = await User.create({
+        firstName: body.first_name,
+        lastName: body.last_name,
+        email: body.email,
+        jobTitle: body.job_title,
+        gender: body.gender,
+    });
+    return res.status(201).json({ msg: "Success" });
 })
 
 
